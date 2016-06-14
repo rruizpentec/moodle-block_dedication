@@ -130,7 +130,7 @@ class block_dedication_manager {
 
         return $rows;
     }
-    
+
     private static function get_user_from_students($students, $userid) {
         foreach ($students as $user) {
             if ($userid == $user->id) {
