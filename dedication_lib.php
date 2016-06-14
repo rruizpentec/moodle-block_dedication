@@ -51,51 +51,92 @@ class block_dedication_manager {
 
         $rows = array();
 
-        $where = 'courseid = :courseid AND userid = :userid AND timecreated >= :mintime AND timecreated <= :maxtime';
+        $where = 'courseid = :courseid AND userid IN (:userids) AND timecreated >= :mintime AND timecreated <= :maxtime';
         $params = array(
             'courseid' => $this->course->id,
-            'userid' => 0,
+            'userids' => 0,
             'mintime' => $this->mintime,
             'maxtime' => $this->maxtime
         );
 
         $perioddays = ($this->maxtime - $this->mintime) / DAYSECS;
 
+        $userids = "0";
         foreach ($students as $user) {
             $daysconnected = array();
-            $params['userid'] = $user->id;
-            $logs = $DB->get_recordset_select('logstore_standard_log', $where, $params, 'timecreated ASC', 'id,timecreated');
-            if ($logs) {
-                $previouslog = array_shift($logs);
-                $previouslogtime = $previouslog->timecreated;
-                $sessionstart = $previouslog->timecreated;
-                $dedication = 0;
-                $daysconnected[date('Y-m-d', $previouslog->timecreated)] = 1;
+            $userids .= $user->id;
+        }
+        $params['userids'] = $userids;
 
-                foreach ($logs as $log) {
+        $logs = $DB->get_recordset_select('logstore_standard_log', $where, $params, 'userid ASC, timecreated ASC', 'id,userid,timecreated');
+        
+        $daysconnected = array();
+        $previouslogtime = 0;
+        $sessionstart = 0;
+        $dedication = 0;
+        $previoususerid = -1;
+        if ($logs) {
+            foreach ($logs as $log) {
+                if ($log->userid != $previoususerid) {
+                    if ($previoususerid > 0) {
+                        $daysconnected = count($daysconnected);
+                        $user = self::get_user_from_students($students, $previoususerid);
+                        if ($user) {
+                            $groups = groups_get_user_groups($this->course->id, $user->id);
+                            $group = !empty($groups) && !empty($groups[0]) ? $groups[0][0] : 0;
+                            $rows[] = (object)array(
+                                'user' => $user,
+                                'groupid' => $group,
+                                'dedicationtime' => $dedication,
+                                'connectionratio' => round($daysconnected / $perioddays, 2),
+                            );
+                        }
+                    }
+                    $daysconnected[date('Y-m-d', $log->timecreated)] = 1;
+                    $previouslogtime = $log->timecreated;
+                    $sessionstart = $log->timecreated;
+                    $previoususerid  = $log->userid;
+                    $dedication = 0;
+                    $daysconnected = array();
+                } else {
+                    // Another record from the same user.
+                    $daysconnected[date('Y-m-d', $log->timecreated)] = 1;
                     if (($log->timecreated - $previouslogtime) > $this->limit) {
                         $dedication += $previouslogtime - $sessionstart;
                         $sessionstart = $log->timecreated;
                     }
                     $previouslogtime = $log->timecreated;
-                    $daysconnected[date('Y-m-d', $log->timecreated)] = 1;
                 }
-                $dedication += $previouslogtime - $sessionstart;
-            } else {
-                $dedication = 0;
             }
-            $daysconnected = count($daysconnected);
-            $groups = groups_get_user_groups($this->course->id, $user->id);
-            $group = !empty($groups) && !empty($groups[0]) ? $groups[0][0] : 0;
-            $rows[] = (object)array(
-                'user' => $user,
-                'groupid' => $group,
-                'dedicationtime' => $dedication,
-                'connectionratio' => round($daysconnected / $perioddays, 2),
-            );
+            // Time dedicated on the last user record.
+            $dedication += $previouslogtime - $sessionstart;
+            // Last user data.
+            if ($previoususerid > 0) {
+                $daysconnected = count($daysconnected);
+                $user = self::get_user_from_students($students, $previoususerid);
+                if ($user) {
+                    $groups = groups_get_user_groups($this->course->id, $user->id);
+                    $group = !empty($groups) && !empty($groups[0]) ? $groups[0][0] : 0;
+                    $rows[] = (object)array(
+                        'user' => $user,
+                        'groupid' => $group,
+                        'dedicationtime' => $dedication,
+                        'connectionratio' => round($daysconnected / $perioddays, 2),
+                    );
+                }
+            }
         }
 
         return $rows;
+    }
+    
+    private static function get_user_from_students($students, $userid) {
+        foreach ($students as $user) {
+            if ($userid == $user->id) {
+                return $user;
+            }
+        }
+        return null;
     }
 
     public function download_students_dedication($rows) {
