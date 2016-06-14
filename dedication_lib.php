@@ -87,7 +87,7 @@ class block_dedication_manager {
             $daysconnected = count($daysconnected);
             $groups = groups_get_user_groups($this->course->id, $user->id);
             $group = !empty($groups) && !empty($groups[0]) ? $groups[0][0] : 0;
-            $rows[] = (object) array(
+            $rows[] = (object)array(
                 'user' => $user,
                 'groupid' => $group,
                 'dedicationtime' => $dedication,
@@ -188,7 +188,7 @@ class block_dedication_manager {
 
                         // Ignore sessions with a really short duration.
                         if ($dedication > BLOCK_DEDICATION_IGNORE_SESSION_TIME) {
-                            $rows[] = (object) array(
+                            $rows[] = (object)array(
                                 'start_date'     => $sessionstart,
                                 'dedicationtime' => $dedication,
                                 'ips'            => array_keys($ips));
@@ -204,7 +204,7 @@ class block_dedication_manager {
 
                 // Ignore sessions with a really short duration.
                 if ($dedication > BLOCK_DEDICATION_IGNORE_SESSION_TIME) {
-                    $rows[] = (object) array(
+                    $rows[] = (object)array(
                         'start_date'     => $sessionstart,
                         'dedicationtime' => $dedication,
                         'ips'            => array_keys($ips));
