@@ -14,11 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-// Default session time limit in seconds
+/**
+ * Dedication block definition
+ *
+ * @package    block
+ * @subpackage dedication
+ * @copyright  2008 CICEI http://http://www.cicei.com
+ * @author     2008 Borja Rubio Reyes
+ *             2011 Aday Talavera Hierro (update to Moodle 2.x)
+ *             2016 Planificacion de Entornos Tecnologicos S.L.
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+// Default session time limit in seconds.
 define('BLOCK_DEDICATION_DEFAULT_SESSION_LIMIT', 60 * 60);
-// Ignore sessions with a duration less than defined value in seconds
+// Ignore sessions with a duration less than defined value in seconds.
 define('BLOCK_DEDICATION_IGNORE_SESSION_TIME', 59);
-// Default regeneration time in seconds
+// Default regeneration time in seconds.
 define('BLOCK_DEDICATION_DEFAULT_REGEN_TIME', 60 * 15);
 
 class block_dedication_manager {
@@ -27,19 +39,19 @@ class block_dedication_manager {
     protected $maxtime;
     protected $limit;
 
-    function __construct($course, $mintime, $maxtime, $limit) {
+    public function __construct($course, $mintime, $maxtime, $limit) {
         $this->course = $course;
         $this->mintime = $mintime;
         $this->maxtime = $maxtime;
         $this->limit = $limit;
     }
 
-    function get_students_dedication($students) {
+    public function get_students_dedication($students) {
         global $DB;
 
         $rows = array();
 
-        $where = 'course = :courseid AND userid = :userid AND time >= :mintime AND time <= :maxtime';
+        $where = 'courseid = :courseid AND userid = :userid AND timecreated >= :mintime AND timecreated <= :maxtime';
         $params = array(
             'courseid' => $this->course->id,
             'userid' => 0,
@@ -52,21 +64,22 @@ class block_dedication_manager {
         foreach ($students as $user) {
             $daysconnected = array();
             $params['userid'] = $user->id;
-            $logs = $DB->get_records_select('log', $where, $params, 'time ASC', 'id,time');
+            //$logs = $DB->get_records_select('log', $where, $params, 'timecreated ASC', 'id,time');
+            $logs = $DB->get_recordset_select('logstore_standard_log', $where, $params, 'timecreated ASC', 'id,timecreated');
             if ($logs) {
                 $previouslog = array_shift($logs);
-                $previouslogtime = $previouslog->time;
-                $sessionstart = $previouslog->time;
+                $previouslogtime = $previouslog->timecreated;
+                $sessionstart = $previouslog->timecreated;
                 $dedication = 0;
-                $daysconnected[date('Y-m-d', $previouslog->time)] = 1;
+                $daysconnected[date('Y-m-d', $previouslog->timecreated)] = 1;
 
                 foreach ($logs as $log) {
-                    if (($log->time - $previouslogtime) > $this->limit) {
+                    if (($log->timecreated - $previouslogtime) > $this->limit) {
                         $dedication += $previouslogtime - $sessionstart;
-                        $sessionstart = $log->time;
+                        $sessionstart = $log->timecreated;
                     }
-                    $previouslogtime = $log->time;
-                    $daysconnected[date('Y-m-d', $log->time)] = 1;
+                    $previouslogtime = $log->timecreated;
+                    $daysconnected[date('Y-m-d', $log->timecreated)] = 1;
                 }
                 $dedication += $previouslogtime - $sessionstart;
             } else {
@@ -86,7 +99,7 @@ class block_dedication_manager {
         return $rows;
     }
 
-    function download_students_dedication($rows) {
+    public function download_students_dedication($rows) {
         $groups = groups_get_all_groups($this->course->id);
 
         $headers = array(
@@ -115,44 +128,45 @@ class block_dedication_manager {
                 $row->user->lastname,
                 isset($groups[$row->groupid]) ? $groups[$row->groupid]->name : '',
                 round($row->dedicationtime / MINSECS),
-                block_dedication_manager::format_dedication($row->dedicationtime),
+                selfformat_dedication($row->dedicationtime),
                 $row->connectionratio,
             );
         }
 
         $rows = array_merge($headers, $rows);
 
-        return block_dedication_manager::generate_download("{$this->course->shortname}_dedication", $rows);
+        return self::generate_download("{$this->course->shortname}_dedication", $rows);
     }
 
-    function get_user_dedication($user, $simple = false) {
+    public function get_user_dedication($user, $simple = false) {
         global $DB;
 
-        $where = 'course = :courseid AND userid = :userid AND time >= :mintime AND time <= :maxtime';
+        $where = 'courseid = :courseid AND userid = :userid AND timecreated >= :mintime AND timecreated <= :maxtime';
         $params = array(
             'courseid' => $this->course->id,
             'userid' => $user->id,
             'mintime' => $this->mintime,
             'maxtime' => $this->maxtime
         );
-        $logs = $DB->get_records_select('log', $where, $params, 'time ASC', 'id,time,ip');
+        //$logs = $DB->get_records_select('log', $where, $params, 'time ASC', 'id,time,ip');
+        $logs = $DB->get_recordset_select('logstore_standard_log', $where, $params, 'timecreated ASC', 'id,timecreated');
 
         if ($simple) {
-            // Return total dedication time in seconds
+            // Return total dedication time in seconds.
             $total = 0;
 
             if ($logs) {
                 $previouslog = array_shift($logs);
-                $previouslogtime = $previouslog->time;
+                $previouslogtime = $previouslog->timecreated;
                 $sessionstart = $previouslogtime;
 
                 foreach ($logs as $log) {
-                    if (($log->time - $previouslogtime) > $this->limit) {
+                    if (($log->timecreated - $previouslogtime) > $this->limit) {
                         $dedication = $previouslogtime - $sessionstart;
                         $total += $dedication;
-                        $sessionstart = $log->time;
+                        $sessionstart = $log->timecreated;
                     }
-                    $previouslogtime = $log->time;
+                    $previouslogtime = $log->timecreated;
                 }
                 $dedication = $previouslogtime - $sessionstart;
                 $total += $dedication;
@@ -161,35 +175,41 @@ class block_dedication_manager {
             return $total;
 
         } else {
-            // Return user sessions with details
+            // Return user sessions with details.
             $rows = array();
 
             if ($logs) {
                 $previouslog = array_shift($logs);
-                $previouslogtime = $previouslog->time;
+                $previouslogtime = $previouslog->timecreated;
                 $sessionstart = $previouslogtime;
                 $ips = array($previouslog->ip => true);
 
                 foreach ($logs as $log) {
-                    if (($log->time - $previouslogtime) > $this->limit) {
+                    if (($log->timecreated - $previouslogtime) > $this->limit) {
                         $dedication = $previouslogtime - $sessionstart;
 
-                        // Ignore sessions with a really short duration
+                        // Ignore sessions with a really short duration.
                         if ($dedication > BLOCK_DEDICATION_IGNORE_SESSION_TIME) {
-                            $rows[] = (object) array('start_date' => $sessionstart, 'dedicationtime' => $dedication, 'ips' => array_keys($ips));
+                            $rows[] = (object) array(
+                                'start_date'     => $sessionstart,
+                                'dedicationtime' => $dedication,
+                                'ips'            => array_keys($ips));
                             $ips = array();
                         }
-                        $sessionstart = $log->time;
+                        $sessionstart = $log->timecreated;
                     }
-                    $previouslogtime = $log->time;
+                    $previouslogtime = $log->timecreated;
                     $ips[$log->ip] = true;
                 }
 
                 $dedication = $previouslogtime - $sessionstart;
 
-                // Ignore sessions with a really short duration
+                // Ignore sessions with a really short duration.
                 if ($dedication > BLOCK_DEDICATION_IGNORE_SESSION_TIME) {
-                    $rows[] = (object) array('start_date' => $sessionstart, 'dedicationtime' => $dedication, 'ips' => array_keys($ips));
+                    $rows[] = (object) array(
+                        'start_date'     => $sessionstart,
+                        'dedicationtime' => $dedication,
+                        'ips'            => array_keys($ips));
                 }
             }
 
@@ -197,7 +217,7 @@ class block_dedication_manager {
         }
     }
 
-    function download_user_dedication($user, $rows) {
+    public function download_user_dedication($user, $rows) {
         $headers = array(
             array(
                 get_string('sincerow', 'block_dedication'),
@@ -224,18 +244,18 @@ class block_dedication_manager {
                 $user->lastname,
                 userdate($row->start_date),
                 $row->dedicationtime,
-                block_dedication_manager::format_dedication($row->dedicationtime),
+                self::format_dedication($row->dedicationtime),
                 implode(', ', $row->ips),
             );
         }
 
         $rows = array_merge($headers, $rows);
 
-        return block_dedication_manager::generate_download("{$this->course->shortname}_dedication", $rows);
+        return self::generate_download("{$this->course->shortname}_dedication", $rows);
     }
 
-    // Formats time based in Moodle function format_time($totalsecs)
-    static function format_dedication($totalsecs) {
+    // Formats time based in Moodle function format_time($totalsecs).
+    public static function format_dedication($totalsecs) {
         $totalsecs = abs($totalsecs);
 
         $str = new stdClass();
@@ -259,37 +279,43 @@ class block_dedication_manager {
         $omins = '';
         $osecs = '';
 
-        if ($hours)
+        if ($hours) {
             $ohours = $hours . ' ' . $sh;
-        if ($mins)
+        }
+        if ($mins) {
             $omins = $mins . ' ' . $sm;
-        if ($secs)
+        }
+        if ($secs) {
             $osecs = $secs . ' ' . $ss;
+        }
 
-        if ($hours)
+        if ($hours) {
             return trim($ohours . ' ' . $omins);
-        if ($mins)
+        }
+        if ($mins) {
             return trim($omins . ' ' . $osecs);
-        if ($secs)
+        }
+        if ($secs) {
             return $osecs;
+        }
         return get_string('now');
     }
 
-    // Formats ips
-    static function format_ips($ips) {
+    // Formats ips.
+    public static function format_ips($ips) {
         return implode(', ', array_map('block_dedication_manager::link_ip', $ips));
     }
 
-    // Generates an linkable ip
-    static function link_ip($ip) {
+    // Generates an linkable ip.
+    public static function link_ip($ip) {
         return html_writer::link("http://en.utrace.de/?query=$ip", $ip, array('target' => '_blank'));
     }
 
-    // Table styles
-    static function get_table_styles() {
+    // Table styles.
+    public static function get_table_styles() {
         global $PAGE;
 
-        // Twitter Bootstrap styling
+        // Twitter Bootstrap styling.
         if (in_array('bootstrapbase', $PAGE->theme->parents)) {
             $styles = array(
                 'table_class' => 'table table-striped table-bordered table-hover table-condensed table-dedication',
@@ -305,23 +331,23 @@ class block_dedication_manager {
         return $styles;
     }
 
-    // Generate generic Excel file for download
-    static function generate_download($download_name, $rows) {
+    // Generate generic Excel file for download.
+    public static function generate_download($downloadname, $rows) {
         global $CFG;
 
         require_once($CFG->libdir. '/excellib.class.php');
 
         $workbook = new MoodleExcelWorkbook('-', 'excel5');
-        $workbook->send(clean_filename($download_name));
+        $workbook->send(clean_filename($downloadname));
 
         $myxls = $workbook->add_worksheet(get_string('pluginname', 'block_dedication'));
 
-        $row_count = 0;
+        $rowcount = 0;
         foreach ($rows as $row) {
             foreach ($row as $index => $content) {
-                $myxls->write($row_count, $index, $content);
+                $myxls->write($rowcount, $index, $content);
             }
-            $row_count++;
+            $rowcount++;
         }
 
         $workbook->close();
@@ -329,5 +355,3 @@ class block_dedication_manager {
         return $workbook;
     }
 }
-
-?>

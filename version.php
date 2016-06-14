@@ -14,7 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-$plugin->version   = 2014030401;
+/**
+ * Version details
+ *
+ * @package    block
+ * @subpackage dedication
+ * @copyright  2008 CICEI http://http://www.cicei.com
+ * @author     2008 Borja Rubio Reyes
+ *             2011 Aday Talavera Hierro (update to Moodle 2.x)
+ *             2016 Planificacion de Entornos Tecnologicos S.L.
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+$plugin->version   = 2016061400;
 $plugin->requires  = 2010112400;
 $plugin->component = 'block_dedication';
-$plugin->release   = 'Moodle 2 reset';
+$plugin->release   = 'Moodle 2.9.3';

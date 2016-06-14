@@ -14,16 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * Dedication block form
+ *
+ * @package    block
+ * @subpackage dedication
+ * @copyright  2008 CICEI http://http://www.cicei.com
+ * @author     2008 Borja Rubio Reyes
+ *             2011 Aday Talavera Hierro (update to Moodle 2.x)
+ *             2016 Planificacion de Entornos Tecnologicos S.L.
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 
 require_once($CFG->libdir . '/formslib.php');
 
-// Form to select start and end date ranges and session time
+// Form to select start and end date ranges and session time.
 class dedication_block_selection_form extends moodleform {
 
-    function definition() {
+    public function definition() {
         $mform = & $this->_form;
 
         $mform->addElement('header', 'general', get_string('form', 'block_dedication'));
@@ -38,16 +50,14 @@ class dedication_block_selection_form extends moodleform {
         $mform->addHelpButton('maxtime', 'maxtime', 'block_dedication');
 
         $limitoptions = array();
-        for ($i=1; $i<=150; $i++) {
-            $limitoptions[$i*60] = $i;
+        for ($i = 1; $i <= 150; $i++) {
+            $limitoptions[$i * 60] = $i;
         }
         $mform->addElement('select', 'limit', get_string('limit', 'block_dedication'), $limitoptions);
         $mform->addHelpButton('limit', 'limit', 'block_dedication');
 
-        // Buttons
+        // Buttons..
         $this->add_action_buttons(false, get_string('submit', 'block_dedication'));
     }
 
 }
-
-?>
