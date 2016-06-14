@@ -14,6 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * Access capabilities.
+ *
+ * @package    block
+ * @subpackage dedication
+ * @copyright  2008 CICEI http://http://www.cicei.com
+ * @author     2008 Borja Rubio Reyes
+ *             2011 Aday Talavera Hierro (update to Moodle 2.x)
+ *             2016 Planificacion de Entornos Tecnologicos S.L.
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 $capabilities = array(
     'block/dedication:use' => array(
         'captype' => 'write',
@@ -35,5 +47,3 @@ $capabilities = array(
         'clonepermissionsfrom' => 'moodle/site:manageblocks'
     ),
 );
-
-?>
