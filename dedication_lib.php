@@ -68,8 +68,9 @@ class block_dedication_manager {
         }
         $params['userids'] = $userids;
 
-        $logs = $DB->get_recordset_select('logstore_standard_log', $where, $params, 'userid ASC, timecreated ASC', 'id,userid,timecreated');
-        
+        $logs = $DB->get_recordset_select('logstore_standard_log', $where, $params, 'userid ASC, timecreated ASC',
+                'id,userid,timecreated');
+
         $daysconnected = array();
         $previouslogtime = 0;
         $sessionstart = 0;
