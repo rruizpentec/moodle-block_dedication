@@ -50,23 +50,21 @@ class block_dedication_manager {
         global $DB;
 
         $rows = array();
+        $userids = array();
+        foreach ($students as $user) {
+            array_push($userids, $user->id);
+        }
+        list($insql, $inparams) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
 
-        $where = 'courseid = :courseid AND userid IN (:userids) AND timecreated >= :mintime AND timecreated <= :maxtime';
-        $params = array(
+        $where = "courseid = :courseid AND userid {$insql} AND timecreated >= :mintime AND timecreated <= :maxtime";
+
+        $queryparams = array(
             'courseid' => $this->course->id,
-            'userids' => 0,
             'mintime' => $this->mintime,
             'maxtime' => $this->maxtime
         );
-
+        $params = array_merge($queryparams, $inparams);
         $perioddays = ($this->maxtime - $this->mintime) / DAYSECS;
-
-        $userids = "0";
-        foreach ($students as $user) {
-            $daysconnected = array();
-            $userids .= $user->id;
-        }
-        $params['userids'] = $userids;
 
         $logs = $DB->get_recordset_select('logstore_standard_log', $where, $params, 'userid ASC, timecreated ASC',
                 'id,userid,timecreated');
@@ -109,6 +107,7 @@ class block_dedication_manager {
                     $previouslogtime = $log->timecreated;
                 }
             }
+
             // Time dedicated on the last user record.
             $dedication += $previouslogtime - $sessionstart;
             // Last user data.
@@ -127,7 +126,6 @@ class block_dedication_manager {
                 }
             }
         }
-
         return $rows;
     }
 
